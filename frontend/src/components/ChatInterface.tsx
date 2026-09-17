@@ -8,7 +8,6 @@ export default function ChatInterface() {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to the bottom as the stream types out the text
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -22,7 +21,6 @@ export default function ChatInterface() {
     setQuery("");
     setIsLoading(true);
 
-    // Create an empty placeholder message for the assistant's incoming text
     setMessages((prev) => [
       ...prev,
       { role: "assistant", content: "", sources: undefined },
@@ -37,34 +35,28 @@ export default function ChatInterface() {
 
       if (!response.body) throw new Error("No response body");
 
-      // Attach a reader to the stream
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
       let buffer = "";
 
-      // Continuously read chunks as Flask yields them
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
 
-        // Decode the binary chunk into text and add it to our buffer
         buffer += decoder.decode(value, { stream: true });
 
-        // SSE messages are always separated by double newlines (\n\n)
         const events = buffer.split("\n\n");
         
-        // Keep the last chunk in the buffer if it didn't end with \n\n (it might be cut off)
         buffer = events.pop() || ""; 
 
         for (const event of events) {
           if (event.startsWith("data: ")) {
-            const dataStr = event.slice(6); // Remove the "data: " prefix
+            const dataStr = event.slice(6); 
             
             try {
               const data = JSON.parse(dataStr);
 
               if (data.type === "context") {
-                // Step 1: Attach the retrieved scientific sources instantly
                 setMessages((prev) => {
                   const newMessages = [...prev];
                   const lastMsg = newMessages[newMessages.length - 1];
@@ -72,7 +64,6 @@ export default function ChatInterface() {
                   return newMessages;
                 });
               } else if (data.type === "token") {
-                // Step 2: Append the LLM token word-by-word
                 setMessages((prev) => {
                   const newMessages = [...prev];
                   const lastMsg = newMessages[newMessages.length - 1];
@@ -80,7 +71,6 @@ export default function ChatInterface() {
                   return newMessages;
                 });
               } else if (data.type === "done") {
-                // Step 3: Stop the loader
                 setIsLoading(false);
               }
             } catch (err) {
@@ -101,12 +91,9 @@ export default function ChatInterface() {
         {messages.map((msg, index) => (
           <div key={index} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             <div className={`max-w-[80%] p-4 rounded-xl shadow-sm ${msg.role === "user" ? "bg-blue-600 text-white" : "bg-white border border-gray-200"}`}>
-              {/* Message Content */}
               <div className="whitespace-pre-wrap leading-relaxed">
                 {msg.content || (msg.role === "assistant" && <span className="animate-pulse text-gray-400">Searching scientific corpus...</span>)}
               </div>
-              
-              {/* Display Sources (Only renders when type="context" arrives) */}
               {msg.sources && msg.sources.length > 0 && (
                 <div className="mt-4 pt-3 border-t border-gray-100">
                   <p className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">Sources Used:</p>
@@ -126,7 +113,6 @@ export default function ChatInterface() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
       <form onSubmit={handleSubmit} className="fixed bottom-0 left-0 right-0 max-w-4xl mx-auto p-4 bg-gray-50 pb-8">
         <div className="flex gap-2">
           <input
